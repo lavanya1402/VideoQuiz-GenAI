@@ -1,0 +1,63 @@
+name: Deploy to Azure Web App (Container)
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  AZURE_WEBAPP_NAME: app-videoquiz          # <-- your Web App name
+  AZURE_RG: rg-videoquiz                    # <-- your Resource Group
+  ACR_NAME: acrvideoquiz12345               # <-- your Azure Container Registry name
+  IMAGE_NAME: videoquiz
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Login to Azure using a Service Principal (add AZURE_CREDENTIALS in repo Settings > Secrets)
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Server-side build in ACR (no local Docker needed)
+      - name: Build & Push to ACR
+        uses: azure/acr-build@v1
+        with:
+          service_principal: ${{ secrets.AZURE_CREDENTIALS }}
+          registry: ${{ env.ACR_NAME }}
+          repository: ${{ env.IMAGE_NAME }}
+          tag: latest
+
+      # Configure container image for the Web App
+      - name: Update Web App container
+        run: |
+          az webapp config container set \
+            -g $AZURE_RG -n $AZURE_WEBAPP_NAME \
+            --docker-custom-image-name ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest \
+            --docker-registry-server-url https://${{ env.ACR_NAME }}.azurecr.io
+
+      # Set/refresh required environment variables on the Web App
+      - name: Apply App Settings
+        run: |
+          az webapp config appsettings set -g $AZURE_RG -n $AZURE_WEBAPP_NAME --settings \
+            AZURE_OPENAI_ENDPOINT='${{ secrets.AZURE_OPENAI_ENDPOINT }}' \
+            AZURE_OPENAI_API_KEY='${{ secrets.AZURE_OPENAI_API_KEY }}' \
+            AZURE_OPENAI_DEPLOYMENT='${{ secrets.AZURE_OPENAI_DEPLOYMENT }}' \
+            AZURE_OPENAI_API_VERSION='${{ secrets.AZURE_OPENAI_API_VERSION }}' \
+            AZ_SPEECH_KEY='${{ secrets.AZ_SPEECH_KEY }}' \
+            AZ_SPEECH_REGION='${{ secrets.AZ_SPEECH_REGION }}' \
+            FFMPEG_PATH='/usr/bin' \
+            WEBSITES_PORT='8501' \
+            SCM_DO_BUILD_DURING_DEPLOYMENT='false' \
+            WEBSITE_RUN_FROM_PACKAGE='0' \
+            WEBSITE_ENABLE_SYNC_UPDATE_SITE='true'
+
+      - name: Restart app
+        run: az webapp restart -g $AZURE_RG -n $AZURE_WEBAPP_NAME

@@ -1,0 +1,21 @@
+name: Nightly Stop Azure Web App
+
+on:
+  schedule:
+    - cron: "30 18 * * *"   # every day at 00:00 IST (18:30 UTC) – adjust if you want
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: app-videoquiz
+  AZURE_RG: rg-videoquiz
+
+jobs:
+  stop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Stop app
+        run: az webapp stop -g $AZURE_RG -n $AZURE_WEBAPP_NAME

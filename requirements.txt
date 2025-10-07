@@ -1,0 +1,7 @@
+streamlit
+yt-dlp
+youtube-transcript-api
+pydub
+openai>=1.40.0
+azure-cognitiveservices-speech
+python-dotenv
