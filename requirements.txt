@@ -1,7 +1,19 @@
-streamlit
-yt-dlp
-youtube-transcript-api
-pydub
-openai>=1.40.0
-azure-cognitiveservices-speech
-python-dotenv
+# App
+streamlit==1.44.1
+pandas>=2.2.2,<3
+
+# Captions & network
+yt-dlp==2024.10.07
+youtube-transcript-api==0.6.2
+requests>=2.31.0
+httpx==0.27.2            # keep this exact with openai 1.x
+
+# Media helpers
+ffmpeg-python==0.2.0     # optional helper; you still need ffmpeg binary present
+
+# AI SDKs
+openai>=1.40.0,<2
+azure-cognitiveservices-speech==1.46.0
+
+# Config
+python-dotenv>=1.0.1
