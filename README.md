@@ -63,38 +63,38 @@ Built for **learning, education, and knowledge extraction**.
 ```mermaid
 graph TB
 
-%% ================= EXPERIENCE =================
-subgraph E["🎛️ Experience Layer (One Smart Workspace)"]
-UI["🖥️ Transcript Workspace<br/>📥 Paste YouTube URL<br/>▶ Run Pipeline<br/>📄 View Transcript<br/>🧠 Summary + Quiz<br/>💾 Download Files"]
+%% EXPERIENCE
+subgraph E["Experience Layer (Workspace UI)"]
+UI["Transcript Workspace<br/>Paste URL → Run → View Transcript → Summary + Quiz"]
 end
 
-%% ================= INGESTION =================
-subgraph U["📥 Ingestion Layer (Video → Text)"]
-U1["🔗 YouTube Downloader<br/>yt-dlp"]
-U2["🎧 Audio Extraction<br/>FFmpeg"]
-U3["🗣️ Speech → Text<br/>Whisper Transcription"]
+%% INGESTION
+subgraph U["Ingestion Layer (Video → Text)"]
+U1["YouTube Downloader (yt-dlp)"]
+U2["Audio Extraction (FFmpeg)"]
+U3["Speech to Text (Whisper)"]
 end
 
-%% ================= INTELLIGENCE =================
-subgraph I["🧠 Intelligence Layer (Understanding Engine)"]
-I1["📄 Transcript Cleaner<br/>Noise removal"]
-I2["🧠 Summarization Engine<br/>LLM Summary"]
-I3["❓ Quiz Generator<br/>Auto Q&A"]
+%% INTELLIGENCE
+subgraph I["Intelligence Layer"]
+I1["Transcript Cleaner"]
+I2["Summarization Engine"]
+I3["Quiz Generator"]
 end
 
-%% ================= CONTINUITY =================
-subgraph C["💾 Output Layer (Learning Assets)"]
-C1["📝 Transcript File"]
-C2["📌 Summary File"]
-C3["🧪 Quiz File"]
+%% OUTPUT
+subgraph C["Output Layer"]
+C1["Transcript File"]
+C2["Summary File"]
+C3["Quiz File"]
 end
 
-%% ================= DECISION ENGINE =================
-subgraph D["🚀 Decision Engine"]
-LLM["🤖 OpenAI LLM<br/>Reasoning + Content Generation"]
+%% ENGINE
+subgraph D["LLM Decision Engine"]
+LLM["OpenAI LLM"]
 end
 
-%% ================= FLOW =================
+%% FLOW
 UI --> U1 --> U2 --> U3
 U3 --> I1 --> I2 --> I3
 I2 --> LLM --> I2
@@ -107,22 +107,8 @@ I3 --> C3
 C1 --> UI
 C2 --> UI
 C3 --> UI
+```
 
-%% ================= COLORS =================
-classDef exp fill:#dbeafe,stroke:#1e40af,stroke-width:3px,color:#000;
-classDef ingest fill:#dcfce7,stroke:#166534,stroke-width:3px,color:#000;
-classDef intel fill:#fef3c7,stroke:#92400e,stroke-width:3px,color:#000;
-classDef cont fill:#fce7f3,stroke:#9d174d,stroke-width:3px,color:#000;
-classDef engine fill:#fff7ed,stroke:#c2410c,stroke-width:3px,color:#000;
-
-class UI exp;
-class U1,U2,U3 ingest;
-class I1,I2,I3 intel;
-class C1,C2,C3 cont;
-class LLM engine;
-
-
----
 
 ## Tech Stack
 
