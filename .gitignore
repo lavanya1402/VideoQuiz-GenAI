@@ -16,13 +16,13 @@ pip-wheel-metadata/
 .venv/
 venv/
 env/
+venv311/
 
 # ---------- Secrets / Config ----------
 .env
 .env.*
 !.env.example
 .streamlit/secrets.toml
-# Keep config if you want (safe); comment out next line if you track it
 # .streamlit/config.toml
 
 # ---------- App data / temp ----------
@@ -35,8 +35,7 @@ tmp/
 *.ytdl
 *.aria2
 
-# ---------- Captions / Transcripts (ephemeral) ----------
-# Comment these out if you want to version them
+# ---------- Captions / Transcripts ----------
 *.vtt
 *.srt
 
@@ -45,12 +44,9 @@ tmp/
 *.mov
 *.mkv
 *.webm
-# allow tiny demo asset(s)
 !assets/sample.mp4
-# or a folder of tiny demos:
-# !assets/samples/**
 
-# ---------- Credentials you might export locally ----------
+# ---------- Credentials ----------
 cookies.txt
 cookies/*.txt
 
@@ -61,6 +57,6 @@ Thumbs.db
 .idea/
 *.code-workspace
 
-# ---------- FFmpeg binaries (if you ever dropped them in repo by mistake) ----------
+# ---------- FFmpeg ----------
 ffmpeg.exe
 ffprobe.exe

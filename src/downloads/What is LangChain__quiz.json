@@ -1,0 +1,54 @@
+{
+  "questions": [
+    {
+      "q": "What is LangChain primarily used for?",
+      "options": [
+        "Building applications that use large language models",
+        "Creating video games",
+        "Developing mobile applications"
+      ],
+      "answer_index": 0,
+      "explanation": "LangChain is an open source orchestration framework designed for developing applications that utilize large language models."
+    },
+    {
+      "q": "What programming languages does LangChain support?",
+      "options": [
+        "Python and JavaScript",
+        "Java and C++",
+        "Ruby and PHP"
+      ],
+      "answer_index": 0,
+      "explanation": "LangChain comes with libraries for both Python and JavaScript, allowing developers to use it in these environments."
+    },
+    {
+      "q": "What are 'prompts' in the context of LangChain?",
+      "options": [
+        "Instructions given to a large language model",
+        "Types of databases",
+        "User interface elements"
+      ],
+      "answer_index": 0,
+      "explanation": "Prompts are the instructions provided to a large language model to guide its responses."
+    },
+    {
+      "q": "What is the purpose of 'chains' in LangChain?",
+      "options": [
+        "To combine LLMs with other components in workflows",
+        "To store user data",
+        "To create user interfaces"
+      ],
+      "answer_index": 0,
+      "explanation": "Chains in LangChain are used to combine LLMs with other components, executing a sequence of functions to create applications."
+    },
+    {
+      "q": "What does LangChain use to manage memory in applications?",
+      "options": [
+        "Utilities for adding memory options",
+        "Cloud storage solutions",
+        "Local databases"
+      ],
+      "answer_index": 0,
+      "explanation": "LangChain provides utilities that allow applications to retain conversation history or summarize it for better context."
+    }
+  ]
+}

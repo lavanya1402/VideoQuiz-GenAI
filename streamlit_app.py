@@ -1,29 +1,42 @@
 # =========================================
-# streamlit_app.py — Azure-ready, recruiter-proof
+# streamlit_app.py — Azure OpenAI (AOAI) only
+# Author: Lavanya Srivastava  |  Brand: "Made by Lavanya"
+# Year: 2025  |  License: Personal portfolio demo
 # =========================================
-import os, io, re, json, glob, time, html, tempfile, subprocess
+import os, re, json, glob, time, html, tempfile, subprocess
 from pathlib import Path
 from datetime import datetime
 
 import streamlit as st
 import pandas as pd
 
-# Optional: load .env locally
+# Optional: load .env for local dev (Azure App Service will use App Settings)
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except Exception:
     pass
 
-# Put ffmpeg on PATH if provided
-if os.getenv("FFMPEG_PATH"):
-    os.environ["PATH"] = os.getenv("FFMPEG_PATH") + os.pathsep + os.environ.get("PATH", "")
+st.set_page_config(
+    page_title="Video Summarizer & Quiz (Azure)",
+    page_icon="🎥",
+    layout="wide"
+)
 
-st.set_page_config(page_title="Video Summarizer & Quiz (Azure)", page_icon="🎥", layout="wide")
+# ──────────────────────────────────────────────────────────────
+# Helpers (system tools)
+# ──────────────────────────────────────────────────────────────
 
-# =========================
-# Utilities: shell helpers
-# =========================
+def _env(name: str, default: str | None = None) -> str | None:
+    """Env reader: trims quotes/spaces and normalizes endpoint trailing slash."""
+    v = os.getenv(name, default)
+    if v is None:
+        return None
+    v = v.strip().strip('"').strip("'")
+    if name == "AZURE_OPENAI_ENDPOINT":
+        v = v.rstrip('/')
+    return v
+
 def ensure_cmd_ok(cmd: str) -> bool:
     try:
         subprocess.run([cmd, "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -33,15 +46,18 @@ def ensure_cmd_ok(cmd: str) -> bool:
 
 def run_ffmpeg_extract_audio(video_path: str, out_wav_path: str, sr: int = 16000):
     if not ensure_cmd_ok("ffmpeg"):
-        raise RuntimeError("ffmpeg not found on PATH. Install ffmpeg or set FFMPEG_PATH.")
-    cmd = ["ffmpeg", "-y", "-i", video_path, "-ac", "1", "-ar", str(sr), out_wav_path]
-    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        raise RuntimeError("ffmpeg not found. Ensure ffmpeg is installed or present in PATH.")
+    proc = subprocess.run(
+        ["ffmpeg", "-y", "-i", video_path, "-ac", "1", "-ar", str(sr), out_wav_path],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
     if proc.returncode != 0:
         raise RuntimeError(("ffmpeg failed: " + proc.stderr.decode(errors="ignore"))[:1500])
 
-# =========================
-# (Optional) Local Whisper
-# =========================
+# ──────────────────────────────────────────────────────────────
+# Transcription engines
+# ──────────────────────────────────────────────────────────────
+
 @st.cache_resource
 def _load_whisper_local(model_name: str = "base"):
     import whisper
@@ -51,16 +67,13 @@ def transcribe_local_whisper(wav_path: str, model_name: str = "base") -> str:
     try:
         model = _load_whisper_local(model_name)
         return model.transcribe(wav_path).get("text", "").strip()
-    except Exception as e:
+    except Exception:
         return ""
 
-# =========================
-# Azure Speech (STT)
-# =========================
 def transcribe_azure_speech(wav_path: str) -> str:
     import azure.cognitiveservices.speech as speechsdk
-    key = os.getenv("AZ_SPEECH_KEY")
-    region = os.getenv("AZ_SPEECH_REGION")
+    key = _env("AZ_SPEECH_KEY")
+    region = _env("AZ_SPEECH_REGION")
     if not key or not region:
         raise RuntimeError("Azure Speech not configured. Set AZ_SPEECH_KEY and AZ_SPEECH_REGION.")
     speech_config = speechsdk.SpeechConfig(subscription=key, region=region)
@@ -74,7 +87,7 @@ def transcribe_azure_speech(wav_path: str) -> str:
         if evt.result and evt.result.text:
             chunks.append(evt.result.text)
 
-    def _stop(evt):
+    def _stop(_):
         nonlocal done
         done = True
 
@@ -83,51 +96,116 @@ def transcribe_azure_speech(wav_path: str) -> str:
     recognizer.canceled.connect(_stop)
 
     recognizer.start_continuous_recognition_async().get()
-    # safety timeout (e.g., 30 minutes) for very long content
     t0 = time.time()
     while not done and (time.time() - t0) < 1800:
         time.sleep(0.25)
     recognizer.stop_continuous_recognition_async().get()
     return " ".join(chunks).strip()
 
-# =========================
-# Azure OpenAI (text + JSON mode)
-# =========================
-def call_gpt_azure(prompt: str, temperature: float = 0.2) -> str:
+# ──────────────────────────────────────────────────────────────
+# Azure OpenAI (AOAI) client — hardened
+# ──────────────────────────────────────────────────────────────
+
+def _make_aoai_client():
     from openai import AzureOpenAI
-    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-    key = os.getenv("AZURE_OPENAI_API_KEY")
-    version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
-    deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
-    if not endpoint or not key or not deployment:
-        raise RuntimeError("Azure OpenAI missing envs. Set AZURE_OPENAI_ENDPOINT/API_KEY/DEPLOYMENT.")
-    client = AzureOpenAI(azure_endpoint=endpoint, api_key=key, api_version=version)
-    resp = client.chat.completions.create(
-        model=deployment, temperature=temperature,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return resp.choices[0].message.content.strip()
+    endpoint = _env("AZURE_OPENAI_ENDPOINT")
+    key = _env("AZURE_OPENAI_API_KEY")
+    version = _env("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
+
+    if not endpoint:
+        raise RuntimeError("AZURE_OPENAI_ENDPOINT not set.")
+    if not key:
+        raise RuntimeError("AZURE_OPENAI_API_KEY not set.")
+
+    base = endpoint if endpoint.endswith(".azure.com") else endpoint
+    return AzureOpenAI(azure_endpoint=base + "/", api_key=key, api_version=version)
+
+
+def _get_deployment_or_fail() -> str:
+    dep = _env("AZURE_OPENAI_DEPLOYMENT")
+    if not dep:
+        raise RuntimeError(
+            "AZURE_OPENAI_DEPLOYMENT missing. Use your Deployment Name from Azure → OpenAI → Deployments (not the model name)."
+        )
+    return dep
+
+
+def call_gpt_azure(prompt: str, temperature: float = 0.2) -> str:
+    deployment = _get_deployment_or_fail()
+    client = _make_aoai_client()
+    try:
+        resp = client.chat.completions.create(
+            model=deployment,
+            temperature=float(temperature),
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return resp.choices[0].message.content.strip()
+    except Exception as e:
+        raise RuntimeError(f"AOAI chat call failed: {e}") from e
+
 
 def call_gpt_azure_json(messages: list, temperature: float = 0.1) -> str:
-    from openai import AzureOpenAI
-    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-    key = os.getenv("AZURE_OPENAI_API_KEY")
-    version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
-    deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
-    if not endpoint or not key or not deployment:
-        raise RuntimeError("Azure OpenAI missing envs. Set AZURE_OPENAI_ENDPOINT/API_KEY/DEPLOYMENT.")
-    client = AzureOpenAI(azure_endpoint=endpoint, api_key=key, api_version=version)
-    resp = client.chat.completions.create(
-        model=deployment,
-        temperature=temperature,
-        response_format={"type": "json_object"},  # ✅ force JSON
-        messages=messages,
-    )
-    return resp.choices[0].message.content
+    deployment = _get_deployment_or_fail()
+    client = _make_aoai_client()
+    try:
+        resp = client.chat.completions.create(
+            model=deployment,
+            temperature=float(temperature),
+            response_format={"type": "json_object"},
+            messages=messages,
+        )
+        return resp.choices[0].message.content
+    except Exception as e:
+        raise RuntimeError(f"AOAI JSON chat call failed: {e}") from e
 
-# =========================
-# Quiz prompt builders
-# =========================
+
+# ──────────────────────────────────────────────────────────────
+# AOAI validator (lists deployments, pinpoints common mistakes)
+# ──────────────────────────────────────────────────────────────
+
+import requests
+
+def validate_aoai() -> dict:
+    endpoint = _env("AZURE_OPENAI_ENDPOINT")
+    key = _env("AZURE_OPENAI_API_KEY")
+    version = _env("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
+    dep = _env("AZURE_OPENAI_DEPLOYMENT")
+
+    out = {
+        "endpoint": endpoint,
+        "api_version": version,
+        "deployment": dep,
+        "api_key_set": bool(key),
+        "ok": False,
+        "note": "",
+    }
+
+    if not (endpoint and key):
+        out["note"] = "Endpoint or API key missing."
+        return out
+
+    try:
+        url = f"{endpoint.rstrip('/')}/openai/deployments?api-version={version}"
+        r = requests.get(url, headers={"api-key": key}, timeout=15)
+        if r.status_code != 200:
+            out["note"] = f"Deployments list failed: HTTP {r.status_code} {r.text[:300]}"
+            return out
+        names = [x.get("name") for x in r.json().get("data", []) if isinstance(x, dict)]
+        out["deployments_available"] = names
+        if dep and dep not in names:
+            out["note"] = f"Deployment '{dep}' not found. Available: {names}"
+            return out
+        out["ok"] = True
+        out["note"] = "Azure OpenAI connectivity OK."
+        return out
+    except Exception as e:
+        out["note"] = f"Validation exception: {e}"
+        return out
+
+# ──────────────────────────────────────────────────────────────
+# Quiz prompt builder
+# ──────────────────────────────────────────────────────────────
+
 def build_quiz_prompt(tx: str) -> str:
     return f"""
 Create exactly 6 questions grounded ONLY in this transcript.
@@ -145,10 +223,32 @@ Transcript:
 {tx}
 """.strip()
 
-# =========================
-# Robust YouTube captions + fallback
-# =========================
-import yt_dlp, requests, xml.etree.ElementTree as ET
+# ──────────────────────────────────────────────────────────────
+# YouTube helpers
+# ──────────────────────────────────────────────────────────────
+
+import yt_dlp, xml.etree.ElementTree as ET
+from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
+
+
+def _extract_video_id(url: str) -> str | None:
+    m = re.search(r"(?:v=|/shorts/|youtu\.be/)([A-Za-z0-9_-]{11})", url)
+    return m.group(1) if m else None
+
+
+def fetch_transcript_via_api_first(url: str) -> tuple[str | None, str]:
+    vid = _extract_video_id(url)
+    if not vid:
+        return None, "Could not parse YouTube video id."
+    try:
+        s = YouTubeTranscriptApi.get_transcript(vid, languages=["en", "en-US", "en-GB"])
+        text = "\n".join([c["text"].strip() for c in s if c.get("text")])
+        return (text, "Fetched captions via youtube-transcript-api.") if text.strip() else (None, "Empty transcript.")
+    except (NoTranscriptFound, TranscriptsDisabled):
+        return None, "No public transcript; falling back."
+    except Exception as e:
+        return None, f"Transcript API error: {e}"
+
 
 def _vtt_to_text(vtt_str: str) -> str:
     lines = []
@@ -156,10 +256,11 @@ def _vtt_to_text(vtt_str: str) -> str:
         s = line.strip()
         if (not s) or s.startswith("WEBVTT") or "-->" in s or re.match(r"^\d+$", s):
             continue
-        s = re.sub(r"<[^>]+>", "", s)  # strip html tags
+        s = re.sub(r"<[^>]+>", "", s)
         if s:
             lines.append(s)
     return "\n".join(lines)
+
 
 def _srv3_xml_to_text(xml_str: str) -> str:
     try:
@@ -174,7 +275,8 @@ def _srv3_xml_to_text(xml_str: str) -> str:
             parts.append(txt)
     return "\n".join(parts)
 
-def _pick_caption_track(tracks: dict, prefer_langs=("en","en-US","en-GB")):
+
+def _pick_caption_track(tracks: dict, prefer_langs=("en", "en-US", "en-GB")):
     if not tracks:
         return None
     for lang in list(prefer_langs) + list(tracks.keys()):
@@ -184,10 +286,8 @@ def _pick_caption_track(tracks: dict, prefer_langs=("en","en-US","en-GB")):
     lang = next(iter(tracks.keys()))
     return tracks[lang][0], lang
 
+
 def fetch_youtube_captions_robust(url: str) -> tuple[str | None, str]:
-    """
-    Try to fetch captions (public/auto). Returns (text, status_msg).
-    """
     try:
         with yt_dlp.YoutubeDL({"quiet": True}) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -203,7 +303,8 @@ def fetch_youtube_captions_robust(url: str) -> tuple[str | None, str]:
 
     track, lang = choice
     try:
-        r = requests.get(track["url"], timeout=20)
+        import requests as _rq
+        r = _rq.get(track["url"], timeout=20)
         r.raise_for_status()
     except Exception as e:
         return None, f"Failed to download caption track: {e}"
@@ -215,29 +316,27 @@ def fetch_youtube_captions_robust(url: str) -> tuple[str | None, str]:
     elif ext.startswith("srv") or raw.startswith("<timedtext"):
         text = _srv3_xml_to_text(r.text)
     else:
-        text = _vtt_to_text(r.text)  # best-effort
+        text = _vtt_to_text(r.text)
 
     if not text.strip():
         return None, f"Downloaded caption track ({lang}, {ext}) has no usable lines."
     return text, f"Fetched {lang} captions ({ext})."
 
-def ytdlp_download_audio(url: str, out_dir: str) -> str:
-    """
-    Download bestaudio via yt-dlp, then convert to 16k mono wav using ffmpeg.
-    Returns path to the .wav file.
-    """
-    if not ensure_cmd_ok("ffmpeg"):
-        raise RuntimeError("ffmpeg not found on PATH. Install ffmpeg or set FFMPEG_PATH.")
 
+def ytdlp_download_audio(url: str, out_dir: str) -> str:
+    if not ensure_cmd_ok("ffmpeg"):
+        raise RuntimeError("ffmpeg not found.")
     ydl_opts = {
         "quiet": True,
         "format": "bestaudio/best",
         "outtmpl": os.path.join(out_dir, "audio.%(ext)s"),
+        "ratelimit": 2_500_000,
+        "sleep_requests": 1.0,
+        "retries": 3,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.extract_info(url, download=True)
 
-    # find downloaded file
     downloaded = None
     for p in glob.glob(os.path.join(out_dir, "audio.*")):
         if not p.endswith(".wav"):
@@ -250,87 +349,117 @@ def ytdlp_download_audio(url: str, out_dir: str) -> str:
     run_ffmpeg_extract_audio(downloaded, wav_path, sr=16000)
     return wav_path
 
-# =========================
-# Top Banner (polish)
-# =========================
+# ──────────────────────────────────────────────────────────────
+# UI — Header / Brand
+# ──────────────────────────────────────────────────────────────
+
 st.markdown(
     """
-    <div style="background:#E8F5E9;padding:10px;border-radius:8px;margin-bottom:10px;">
-    <b>Status:</b> Connected to <span style="color:#2E7D32;">Azure Foundry ✓</span> |
-    <span style="color:#1976D2;">Azure Speech ✓</span> |
-    <span style="color:#6A1B9A;">Auto Fallback Enabled ✓</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;background:#F3F6FF;border:1px solid #E0E7FF;margin-bottom:8px;">
+      <div>
+        <b>Status:</b> <span style="color:#2E7D32;">App ✓</span> |
+        <span style="color:#1976D2;">Speech ✓</span> |
+        <span style="color:#6A1B9A;">Caption/Audio Fallback ✓</span>
+      </div>
+      <div style="font-weight:600;color:#111;">Made by Lavanya Srivastava</div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-# =========================
-# Sidebar
-# =========================
+# ──────────────────────────────────────────────────────────────
+# Sidebar (settings + debug)
+# ──────────────────────────────────────────────────────────────
+
 with st.sidebar:
     st.header("⚙️ Settings")
     engine = st.selectbox("Transcription engine", ["Azure Speech", "Local Whisper (base)"])
     st.caption("Tip: keep videos ≤ 10–15 min for smooth demos.")
 
-# =========================
-# Hero
-# =========================
-st.markdown("# 🎥 Video Summarizer & Quiz (Azure)")
-st.info("Use a **YouTube URL** (auto fallback to audio if captions blocked) or **upload a video** → get **Transcript → Summary → Quiz**.")
-with st.expander("About this demo", expanded=False):
-    st.caption("Azure OpenAI for summary/quiz (JSON mode). Azure Speech (or local Whisper) for transcription.")
+    # Debug panel
+    if st.checkbox("🔍 Debug Azure"):
+        info = validate_aoai()
+        st.write({
+            "endpoint": info["endpoint"],
+            "api_version": info["api_version"],
+            "deployment": info.get("deployment"),
+            "api_key_set": info["api_key_set"],
+            "deployments_available": info.get("deployments_available", []),
+            "ok": info["ok"],
+            "note": info["note"],
+        })
+        if st.button("Ping AOAI"):
+            try:
+                msg = call_gpt_azure("Say OK from Azure OpenAI.")
+                st.success(msg)
+            except Exception as e:
+                st.error(str(e))
 
-# =========================
-# Quick Demo
-# =========================
+# ──────────────────────────────────────────────────────────────
+# Hero + quick demo controls
+# ──────────────────────────────────────────────────────────────
+
+st.markdown("# 🎥 Video Summarizer & Quiz (Azure)")
+
+st.info("Use a **YouTube URL** (transcript first, then captions, then audio fallback) or **upload a video** → get **Transcript → Summary → Quiz**.")
+
 SAMPLE_PATH = Path("assets/sample.mp4")
+
 st.subheader("⚡ Quick Demo")
-c1, c2, _ = st.columns([1, 1, 2])
-with c1:
+_c1, _c2, _ = st.columns([1, 1, 2])
+with _c1:
     if SAMPLE_PATH.exists() and st.button("Try sample video", use_container_width=True):
         st.session_state["_sample_video_bytes"] = SAMPLE_PATH.read_bytes()
         st.session_state["_sample_video_name"] = SAMPLE_PATH.name
         st.success("Sample loaded. Scroll to Upload.")
-with c2:
+with _c2:
     open_caption_box = st.toggle("Use YouTube URL", value=True)
 
-# --- Smart YouTube handler (recruiter-proof) ---
+# ──────────────────────────────────────────────────────────────
+# YouTube handler (captions/transcript first)
+# ──────────────────────────────────────────────────────────────
+
 if open_caption_box:
     yt_url = st.text_input("Paste YouTube URL:", placeholder="https://www.youtube.com/watch?v=...")
     if yt_url and st.button("Fetch transcript 🎬", use_container_width=True):
-        with st.spinner("Extracting transcript... please wait"):
-            try:
-                # 1) Try public/auto captions
-                text, msg = fetch_youtube_captions_robust(yt_url.strip())
-                if text:
-                    st.success(f"✅ {msg}")
-                    st.session_state["_forced_transcript_from_captions"] = text
+        with st.spinner("Extracting transcript..."):
+            text, msg = fetch_transcript_via_api_first(yt_url.strip())
+            if text:
+                st.success(f"✅ {msg}")
+                st.session_state["_forced_transcript_from_captions"] = text
+            else:
+                text2, msg2 = fetch_youtube_captions_robust(yt_url.strip())
+                if text2:
+                    st.success(f"✅ {msg2}")
+                    st.session_state["_forced_transcript_from_captions"] = text2
                 else:
-                    # 2) Auto-fallback: download audio → Azure Speech/Local
-                    st.warning(f"{msg} — Captions unavailable, converting audio.")
-                    with tempfile.TemporaryDirectory() as tdir:
-                        wav_path = ytdlp_download_audio(yt_url.strip(), tdir)
-                        if engine.startswith("Local"):
-                            text2 = transcribe_local_whisper(wav_path)
+                    st.warning(f"{msg2 or msg} — Captions unavailable, converting audio.")
+                    try:
+                        with tempfile.TemporaryDirectory() as tdir:
+                            wav_path = ytdlp_download_audio(yt_url.strip(), tdir)
+                            tx = (
+                                transcribe_local_whisper(wav_path)
+                                if engine.startswith("Local")
+                                else transcribe_azure_speech(wav_path)
+                            )
+                        if tx.strip():
+                            st.success("✅ Audio converted successfully.")
+                            st.session_state["_forced_transcript_from_captions"] = tx
                         else:
-                            text2 = transcribe_azure_speech(wav_path)
-                    if text2.strip():
-                        st.success("✅ Audio converted successfully.")
-                        st.session_state["_forced_transcript_from_captions"] = text2
-                    else:
-                        st.error("❌ No speech detected. Try another video or upload a file.")
-            except Exception as e:
-                st.error("⚠️ Transcript extraction failed.")
-                st.code(str(e))
+                            st.error("❌ No speech detected. Try another video or upload a file.")
+                    except Exception as e:
+                        st.error("Audio fallback failed.")
+                        st.code(str(e))
 
-# =========================
+# ──────────────────────────────────────────────────────────────
 # Upload / Select video
-# =========================
+# ──────────────────────────────────────────────────────────────
+
 st.subheader("📤 Upload")
-sample_loaded = "_sample_video_bytes" in st.session_state
+_sample_loaded = "_sample_video_bytes" in st.session_state
 video_bytes, video_name = None, None
 
-if sample_loaded:
+if _sample_loaded:
     video_bytes = st.session_state["_sample_video_bytes"]
     video_name = st.session_state["_sample_video_name"]
     st.caption(f"Using sample: **{video_name}**")
@@ -345,9 +474,10 @@ else:
         video_bytes = uf.getbuffer()
         video_name = uf.name
 
-# =========================
+# ──────────────────────────────────────────────────────────────
 # Transcript (captions or ASR)
-# =========================
+# ──────────────────────────────────────────────────────────────
+
 forced_caps = st.session_state.get("_forced_transcript_from_captions")
 if forced_caps:
     transcript = forced_caps
@@ -361,10 +491,11 @@ else:
                 f.write(video_bytes)
             wav_path = os.path.join(tmp, "audio.wav")
             run_ffmpeg_extract_audio(video_path, wav_path, sr=16000)
-            if engine.startswith("Local"):
-                transcript = transcribe_local_whisper(wav_path, model_name="base")
-            else:
-                transcript = transcribe_azure_speech(wav_path)
+            transcript = (
+                transcribe_local_whisper(wav_path, "base")
+                if engine.startswith("Local")
+                else transcribe_azure_speech(wav_path)
+            )
 
 if not transcript or not transcript.strip():
     st.warning("No speech detected.")
@@ -372,12 +503,13 @@ if not transcript or not transcript.strip():
 
 st.subheader("📝 Transcript")
 transcript = st.text_area("Editable transcript", value=transcript, height=300)
-ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-st.download_button("⬇️ Download transcript (.txt)", data=transcript, file_name=f"transcript_{ts}.txt")
+_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+st.download_button("⬇️ Download transcript (.txt)", data=transcript, file_name=f"transcript_{_ts}.txt")
 
-# =========================
-# Executive Summary (Azure OpenAI)
-# =========================
+# ──────────────────────────────────────────────────────────────
+# Executive Summary (AOAI)
+# ──────────────────────────────────────────────────────────────
+
 st.subheader("📚 Executive Summary")
 sum_prompt = f"""
 Summarize the transcript into:
@@ -392,14 +524,15 @@ Transcript:
 try:
     summary = call_gpt_azure(sum_prompt, temperature=0.2)
     st.markdown(summary)
-    st.download_button("⬇️ Download summary (.md)", data=summary, file_name=f"summary_{ts}.md")
+    st.download_button("⬇️ Download summary (.md)", data=summary, file_name=f"summary_{_ts}.md")
 except Exception as e:
-    st.error("Summarization failed. Check Azure OpenAI env or deployment.")
+    st.error("Summarization failed. Check endpoint/key/deployment.")
     st.code(str(e))
 
-# =========================
-# QUIZ: JSON-mode generation → attempt → score
-# =========================
+# ──────────────────────────────────────────────────────────────
+# QUIZ (AOAI JSON)
+# ──────────────────────────────────────────────────────────────
+
 st.subheader("🧠 Quiz")
 col1, col2 = st.columns([1, 1])
 with col1:
@@ -414,6 +547,7 @@ if reset:
         if k.startswith("q"):
             st.session_state.pop(k, None)
     st.rerun()
+
 
 def _truncate(s: str, max_chars: int = 12000) -> str:
     return s if len(s) <= max_chars else s[:max_chars]
@@ -438,7 +572,6 @@ if gen:
             data["questions"] = data["questions"][:6]
         st.session_state["quiz_data"] = data
     except Exception as e:
-        # Fallback: try to salvage largest {...}
         m = re.search(r"\{[\s\S]*\}", locals().get("qraw", ""), re.MULTILINE)
         if m:
             try:
@@ -446,13 +579,13 @@ if gen:
                 if "questions" in data and isinstance(data["questions"], list):
                     st.session_state["quiz_data"] = data
                 else:
-                    st.error("Quiz generation failed. Try again or check deployment.")
+                    st.error("Quiz generation failed.")
                     st.code(str(e))
             except Exception:
-                st.error("Quiz generation failed. Try again or check deployment.")
+                st.error("Quiz generation failed.")
                 st.code(str(e))
         else:
-            st.error("Quiz generation failed. Try again or check deployment.")
+            st.error("Quiz generation failed.")
             st.code(str(e))
 
 quiz_data = st.session_state.get("quiz_data")
@@ -505,10 +638,23 @@ if quiz_data and quiz_data.get("questions"):
         df = pd.DataFrame(results)
         st.caption("Detailed feedback:")
         st.dataframe(df, use_container_width=True)
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        st.download_button("⬇️ Results (.csv)", data=df.to_csv(index=False),
-                           file_name=f"quiz_results_{ts}.csv")
-        st.download_button("⬇️ Quiz (.json)", data=json.dumps(quiz_data, indent=2),
-                           file_name=f"quiz_{ts}.json")
+        _ts2 = datetime.now().strftime("%Y%m%d_%H%M%S")
+        st.download_button("⬇️ Results (.csv)", data=df.to_csv(index=False), file_name=f"quiz_results_{_ts2}.csv")
+        st.download_button("⬇️ Quiz (.json)", data=json.dumps(quiz_data, indent=2), file_name=f"quiz_{_ts2}.json")
 else:
     st.caption("Click **Generate quiz** to create assessment items from the transcript.")
+
+# ──────────────────────────────────────────────────────────────
+# Footer — Authenticity tag
+# ──────────────────────────────────────────────────────────────
+
+st.markdown(
+    """
+    <div style="margin-top:18px;padding:10px 12px;border-radius:10px;background:#F8FAFC;border:1px solid #E5E7EB;">
+      <div style="font-size:14px;color:#111;">
+        © 2025 <b>Lavanya Srivastava</b> — Made with ❤️ | Authentic Build: <i>"Made by Lavanya"</i>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)

@@ -6,14 +6,15 @@ pandas>=2.2.2,<3
 yt-dlp==2024.10.07
 youtube-transcript-api==0.6.2
 requests>=2.31.0
-httpx==0.27.2            # keep this exact with openai 1.x
+httpx==0.27.2        # compatible with openai 1.x
 
 # Media helpers
-ffmpeg-python==0.2.0     # optional helper; you still need ffmpeg binary present
+ffmpeg-python==0.2.0 # you still need ffmpeg binary available in the container/VM
 
 # AI SDKs
 openai>=1.40.0,<2
 azure-cognitiveservices-speech==1.46.0
+azure-ai-inference>=1.0.0b7   # <-- NEW: for Azure AI Foundry project endpoints
 
 # Config
 python-dotenv>=1.0.1

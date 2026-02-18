@@ -1,0 +1,60 @@
+graph TB
+
+%% ================= EXPERIENCE =================
+subgraph E["ðŸŽ›ï¸ Experience Layer (One Smart Workspace)"]
+UI["ðŸ–¥ï¸ Transcript Workspace<br/>ðŸ“¥ Paste YouTube URL<br/>â–¶ Run Pipeline<br/>ðŸ“„ View Transcript<br/>ðŸ§  Summary + Quiz<br/>ðŸ’¾ Download Files"]
+end
+
+%% ================= INGESTION =================
+subgraph U["ðŸ“¥ Ingestion Layer (Video â†’ Text)"]
+U1["ðŸ”— YouTube Downloader<br/>yt-dlp"]
+U2["ðŸŽ§ Audio Extraction<br/>FFmpeg"]
+U3["ðŸ—£ï¸ Speech â†’ Text<br/>Whisper Transcription"]
+end
+
+%% ================= INTELLIGENCE =================
+subgraph I["ðŸ§  Intelligence Layer (Understanding Engine)"]
+I1["ðŸ“„ Transcript Cleaner<br/>Noise removal"]
+I2["ðŸ§  Summarization Engine<br/>LLM Summary"]
+I3["â“ Quiz Generator<br/>Auto Q&A"]
+end
+
+%% ================= CONTINUITY =================
+subgraph C["ðŸ’¾ Output Layer (Learning Assets)"]
+C1["ðŸ“ Transcript File"]
+C2["ðŸ“Œ Summary File"]
+C3["ðŸ§ª Quiz File"]
+end
+
+%% ================= DECISION ENGINE =================
+subgraph D["ðŸš€ Decision Engine"]
+LLM["ðŸ¤– OpenAI LLM<br/>Reasoning + Content Generation"]
+end
+
+%% ================= FLOW =================
+UI --> U1 --> U2 --> U3
+U3 --> I1 --> I2 --> I3
+I2 --> LLM --> I2
+I3 --> LLM --> I3
+
+I1 --> C1
+I2 --> C2
+I3 --> C3
+
+C1 --> UI
+C2 --> UI
+C3 --> UI
+
+%% ================= COLORS =================
+classDef exp fill:#dbeafe,stroke:#1e40af,stroke-width:3px,color:#000;
+classDef ingest fill:#dcfce7,stroke:#166534,stroke-width:3px,color:#000;
+classDef intel fill:#fef3c7,stroke:#92400e,stroke-width:3px,color:#000;
+classDef cont fill:#fce7f3,stroke:#9d174d,stroke-width:3px,color:#000;
+classDef engine fill:#fff7ed,stroke:#c2410c,stroke-width:3px,color:#000;
+
+class UI exp;
+class U1,U2,U3 ingest;
+class I1,I2,I3 intel;
+class C1,C2,C3 cont;
+class LLM engine;
+

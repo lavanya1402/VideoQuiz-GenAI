@@ -26,7 +26,6 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Build the image in ACR (server-side)
       - name: Build & Push to ACR
         uses: azure/acr-build@v1
         with:
@@ -37,12 +36,10 @@ jobs:
           folder: .
           dockerfile: Dockerfile
 
-      # Get the registry login server (e.g., myregistry.azurecr.io)
       - name: Get ACR login server
         id: acr
         run: echo "login_server=$(az acr show -n $ACR_NAME --query loginServer -o tsv)" >> $GITHUB_OUTPUT
 
-      # Enable MSI on the web app and grant AcrPull (idempotent)
       - name: Allow Web App to pull from ACR
         run: |
           az webapp identity assign -g $AZURE_RG -n $AZURE_WEBAPP_NAME
