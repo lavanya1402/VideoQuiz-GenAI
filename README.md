@@ -17,40 +17,40 @@ Built for **learning, education, and knowledge extraction**.
 ## Screenshots
 
 <p align="center">
-  <img src="./assets/screenshot1.png" width="30%">
-  <img src="./assets/screenshot2.png" width="30%">
-  <img src="./assets/screenshot3.png" width="30%">
+  <img src="./assets/screenshot-01-home.png" width="30%">
+  <img src="./assets/screenshot-02-upload.png" width="30%">
+  <img src="./assets/screenshot-03-analysis.png" width="30%">
 </p>
 
 <p align="center">
-  <img src="./assets/screenshot4.png" width="30%">
-  <img src="./assets/screenshot5.png" width="30%">
-  <img src="./assets/screenshot6.png" width="30%">
+  <img src="./assets/screenshot-04-results.png" width="30%">
+  <img src="./assets/screenshot-05-suggestions.png" width="30%">
+  <img src="./assets/screenshot-06-report.png" width="30%">
 </p>
 
 ---
 
 ## What It Does
 
-### ✅ Download Pipeline
+### Download Pipeline
 - Accepts YouTube URL
 - Downloads audio safely
 - Supports cookies (optional)
 - Uses FFmpeg for audio processing
 
-### ✅ Speech Transcription
+### Speech Transcription
 - Whisper-based transcription
 - Converts speech → text
 - Saves transcripts locally
 - Handles long videos
 
-### ✅ AI Summary Engine
+### AI Summary Engine
 - GPT-powered summarization
 - Key takeaways extraction
 - Structured summaries
 - Important terms & concepts
 
-### ✅ Interactive Quiz Generator
+### Interactive Quiz Generator
 - Auto-generated questions
 - Multiple choice answers
 - Instant scoring
@@ -86,54 +86,30 @@ Quiz --> UI
 - FFmpeg
 - yt-dlp
 - Prompt Engineering
-- Local file pipeline
 
 ---
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/YOUR_REPO/youtube-transcript-suite.git
-cd youtube-transcript-suite
-
 python -m venv venv
 venv\Scripts\activate
-
 pip install -r requirements.txt
 streamlit run streamlit_app.py
 ```
 
 ---
 
-## Configuration
-
-Create `.env` file:
+## Files
 
 ```
-OPENAI_API_KEY=your_key_here
-```
-
-Optional:
-
-- Set FFmpeg path in UI settings
-- Add cookies.txt if downloading restricted videos
-
----
-
-## Project Structure
-
-```
-youtube-transcript-suite/
-├── assets/
-│   ├── screenshot1.png
-│   ├── screenshot2.png
-│   ├── screenshot3.png
-│   ├── screenshot4.png
-│   ├── screenshot5.png
-│   └── screenshot6.png
-├── streamlit_app.py
-├── requirements.txt
-├── README.md
+streamlit_app.py
+test_openai.py
+test_speech.py
+requirements.txt
+Dockerfile
+README.md
+assets/
 ```
 
 ---
@@ -141,23 +117,9 @@ youtube-transcript-suite/
 ## Use Cases
 
 - Study YouTube lectures
-- Summarize long tutorials
+- Summarize tutorials
 - Create learning quizzes
-- Extract notes automatically
-- Educational content digestion
-
----
-
-## This project demonstrates
-
-✅ Speech-to-text pipelines  
-✅ AI summarization workflows  
-✅ automated quiz generation  
-✅ full end-to-end ML app  
-✅ human-AI learning loop  
-
-This is not just transcription.  
-This is **AI-powered learning automation**.
+- Auto note generation
 
 ---
 
