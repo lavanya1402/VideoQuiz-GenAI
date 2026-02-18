@@ -17,34 +17,40 @@ Built for **learning, education, and knowledge extraction**.
 ## Screenshots
 
 <p align="center">
-  <img src="assets/First_Screenshot.png" width="30%">
-  <img src="assets/Second_Screenshot.png" width="30%">
-  <img src="assets/Third_Screenshot.png" width="30%">
+  <img src="./assets/screenshot1.png" width="30%">
+  <img src="./assets/screenshot2.png" width="30%">
+  <img src="./assets/screenshot3.png" width="30%">
+</p>
+
+<p align="center">
+  <img src="./assets/screenshot4.png" width="30%">
+  <img src="./assets/screenshot5.png" width="30%">
+  <img src="./assets/screenshot6.png" width="30%">
 </p>
 
 ---
 
 ## What It Does
 
-### ✅ 1) Download Pipeline
+### ✅ Download Pipeline
 - Accepts YouTube URL
 - Downloads audio safely
 - Supports cookies (optional)
 - Uses FFmpeg for audio processing
 
-### ✅ 2) Speech Transcription
+### ✅ Speech Transcription
 - Whisper-based transcription
 - Converts speech → text
 - Saves transcripts locally
 - Handles long videos
 
-### ✅ 3) AI Summary Engine
+### ✅ AI Summary Engine
 - GPT-powered summarization
 - Key takeaways extraction
 - Structured summaries
 - Important terms & concepts
 
-### ✅ 4) Interactive Quiz Generator
+### ✅ Interactive Quiz Generator
 - Auto-generated questions
 - Multiple choice answers
 - Instant scoring
@@ -56,7 +62,6 @@ Built for **learning, education, and knowledge extraction**.
 
 ```mermaid
 graph TB
-
 User --> UI
 UI --> Downloader
 Downloader --> Audio
@@ -127,13 +132,8 @@ youtube-transcript-suite/
 │   ├── screenshot5.png
 │   └── screenshot6.png
 ├── streamlit_app.py
-├── test_openai.py
-├── test_speech.py
 ├── requirements.txt
-├── Dockerfile
-├── .dockerignore
-├── .gitignore
-└── README.md
+├── README.md
 ```
 
 ---
