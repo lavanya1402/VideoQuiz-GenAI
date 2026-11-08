@@ -1,6 +1,7 @@
 # test_speech.py
 from dotenv import load_dotenv; load_dotenv()
-import os, azure.cognitiveservices.speech as speechsdk
+import os
+import azure.cognitiveservices.speech as speechsdk
 
 cfg = speechsdk.SpeechConfig(
     subscription=os.getenv("AZ_SPEECH_KEY"),

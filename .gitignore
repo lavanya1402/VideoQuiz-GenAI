@@ -60,3 +60,5 @@ Thumbs.db
 # ---------- FFmpeg ----------
 ffmpeg.exe
 ffprobe.exe
+.ruff_cache/
+.pytest_cache/

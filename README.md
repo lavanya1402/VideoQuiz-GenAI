@@ -137,8 +137,10 @@ streamlit run streamlit_app.py
 
 ```
 streamlit_app.py
-test_openai.py
-test_speech.py
+src/yt_download.py
+scripts/check_azure_openai.py
+scripts/check_azure_speech.py
+.env.example
 requirements.txt
 Dockerfile
 README.md
@@ -156,6 +158,10 @@ assets/
 
 ---
 
+## Checking your API keys
+
+`scripts/check_azure_openai.py` and `scripts/check_azure_speech.py` make one live call each to confirm your Azure keys work. Run them after filling in `.env`.
+
 ## License
 
-MIT
+MIT, see [LICENSE](LICENSE). Built by [Lavanya Srivastava](https://github.com/lavanya1402), Lavanya AI Consultancy.

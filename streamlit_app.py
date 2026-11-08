@@ -3,7 +3,14 @@
 # Author: Lavanya Srivastava  |  Brand: "Made by Lavanya"
 # Year: 2025  |  License: Personal portfolio demo
 # =========================================
-import os, re, json, glob, time, html, tempfile, subprocess
+import os
+import re
+import json
+import glob
+import time
+import html
+import tempfile
+import subprocess
 from pathlib import Path
 from datetime import datetime
 
@@ -227,7 +234,8 @@ Transcript:
 # YouTube helpers
 # ──────────────────────────────────────────────────────────────
 
-import yt_dlp, xml.etree.ElementTree as ET
+import yt_dlp
+import xml.etree.ElementTree as ET
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
 
 
